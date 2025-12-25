@@ -31,6 +31,11 @@
       "keyword": "หน่วยนับ|unit|ดูหน่วย",
       "description": "แสดงหน่วยนับที่ใช้ในระบบ",
       "sql": "SELECT DISTINCT unit_standard, unit_standard_name FROM ic_inventory WHERE unit_standard IS NOT NULL AND unit_standard != '' ORDER BY unit_standard LIMIT 50"
+    },
+    {
+      "keyword": "ยอดคงเหลือ|stock balance|สต็อกคงเหลือ|คงเหลือในคลัง|ยอดสินค้า|อยู่คลังไหน",
+      "description": "ยอดคงเหลือสินค้าแยกตามคลังและพื้นที่เก็บ (ต้องระบุรหัสสินค้า เช่น '885')",
+      "sql": "SELECT ic_code, warehouse, location, ic_name, ic_unit_code, ROUND(balance_qty/unit_standard_ratio, 2) as balance_qty, ROUND(average_cost*unit_standard_ratio, 2) as average_cost FROM (SELECT coalesce((SELECT stand_value/divide_value FROM ic_unit_use WHERE ic_unit_use.ic_code=temp2.ic_code AND ic_unit_use.code=temp2.ic_unit_code),1) as unit_standard_ratio, ic_code, warehouse, location, ic_name, balance_qty, ic_unit_code, CASE WHEN balance_qty=0 THEN 0 ELSE balance_amount/balance_qty END as average_cost FROM (SELECT ic_code, warehouse, location, ic_name, balance_qty, ic_unit_code FROM (SELECT item_code as ic_code, wh_code as warehouse, shelf_code as location, (SELECT name_1 FROM ic_inventory WHERE ic_inventory.code=item_code) as ic_name, (SELECT unit_standard FROM ic_inventory WHERE ic_inventory.code=item_code) as ic_unit_code, coalesce(sum(calc_flag*(CASE WHEN ((trans_flag IN (70,54,60,58,310,12) OR (trans_flag=66 AND qty>0)) OR (trans_flag IN (56,68,72,44) OR (trans_flag=66 AND qty<0))) THEN round((qty*stand_value)/divide_value,2) ELSE 0 END)),0) as balance_qty FROM ic_trans_detail WHERE ic_trans_detail.last_status=0 AND item_code IN ('{{ITEM_CODE}}') GROUP BY item_code, wh_code, shelf_code) as temp1) as temp2) as final WHERE balance_qty <> 0 ORDER BY ic_code, warehouse, location"
     }
   ],
   "sampleQuestions": [
