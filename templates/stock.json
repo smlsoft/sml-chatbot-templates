@@ -36,6 +36,11 @@
       "keyword": "ยอดคงเหลือ|stock balance|สต็อกคงเหลือ|คงเหลือในคลัง|ยอดสินค้า|อยู่คลังไหน",
       "description": "ยอดคงเหลือสินค้าจากตาราง ic_inventory (ต้องระบุรหัสสินค้า)",
       "sql": "SELECT code as item_code, name_1 as item_name, ROUND(CAST(balance_qty AS NUMERIC), 2) as balance_qty, unit_standard_name FROM ic_inventory WHERE code = '{{ITEM_CODE}}'"
+    },
+    {
+      "keyword": "ยอดค้างจอง|book out|bookout|ค้างจอง|จองสินค้า",
+      "description": "ยอดค้างจองสินค้า (Book Out Quantity) - สินค้าที่จองไว้แต่ยังไม่ได้ตัดสต็อก (ต้องระบุรหัสสินค้า)",
+      "sql": "WITH bookout as (select item_code, sum(bookout_qty_balance) as book_out_qty from (select doc_no, item_code, bookout_qty_balance from (select doc_no, item_code, qty - coalesce((select sum(qty * (stand_value/divide_value)) from ic_trans_detail where ((trans_flag = 44 and doc_ref_type = 2) or (trans_flag = 36 and doc_ref_type = 2) or (ic_trans_detail.trans_flag = 39 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code), 0) as bookout_qty_balance from (select doc_no, item_code, sum(qty * (stand_value/divide_value)) as qty from ic_trans_detail where trans_flag=34 and last_status = 0 and item_code = '{{ITEM_CODE}}' group by doc_no, item_code) as temp1) as temp2) as temp3 group by item_code) select item_code, ROUND(CAST(book_out_qty AS NUMERIC), 2) as book_out_qty from bookout"
     }
   ],
   "sampleQuestions": [
