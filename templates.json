@@ -1,0 +1,117 @@
+{
+  "version": "2.0.0",
+  "format": "markdown",
+  "description": "SML Chatbot Templates - Markdown-based AI-friendly template system",
+  "templates": [
+    {
+      "templateId": "stock",
+      "templateName": "Stock/Inventory",
+      "department": "inventory",
+      "description": "จัดการสินค้าคงคลัง ค้นหาสินค้า ยอดคงเหลือ ยอดค้างจอง/ส่ง/รับ",
+      "keywords": [
+        "สินค้า",
+        "คลัง",
+        "inventory",
+        "stock",
+        "ยอดคงเหลือ",
+        "ค้างจอง",
+        "ค้างส่ง",
+        "ค้างรับ",
+        "สต็อก",
+        "หมวดสินค้า",
+        "category"
+      ],
+      "relatedTables": [
+        "ic_inventory",
+        "ic_category",
+        "ic_trans_detail",
+        "ic_trans",
+        "ic_unit_use"
+      ],
+      "enabled": true,
+      "files": {
+        "systemPrompt": "templates/stock/system_prompt.md",
+        "schema": "templates/stock/schema.md",
+        "specialQueries": "templates/stock/special_queries.md"
+      }
+    },
+    {
+      "templateId": "ar",
+      "templateName": "Accounts Receivable",
+      "department": "accounting",
+      "description": "จัดการลูกหนี้ การเงิน ใบแจ้งหนี้ ยอดค้างชำระ",
+      "keywords": [
+        "ลูกหนี้",
+        "AR",
+        "receivable",
+        "ใบแจ้งหนี้",
+        "ค้างชำระ",
+        "invoice",
+        "customer"
+      ],
+      "relatedTables": [
+        "ar_customer",
+        "ar_invoice"
+      ],
+      "enabled": true,
+      "files": {
+        "systemPrompt": "templates/ar/system_prompt.md",
+        "schema": "templates/ar/schema.md",
+        "specialQueries": "templates/ar/special_queries.md"
+      }
+    },
+    {
+      "templateId": "ap",
+      "templateName": "Accounts Payable",
+      "department": "accounting",
+      "description": "จัดการเจ้าหนี้ การซื้อ ใบสั่งซื้อ ยอดค้างจ่าย",
+      "keywords": [
+        "เจ้าหนี้",
+        "AP",
+        "payable",
+        "ใบสั่งซื้อ",
+        "ค้างจ่าย",
+        "purchase",
+        "vendor"
+      ],
+      "relatedTables": [
+        "ap_vendor",
+        "ap_purchase"
+      ],
+      "enabled": true,
+      "files": {
+        "systemPrompt": "templates/ap/system_prompt.md",
+        "schema": "templates/ap/schema.md",
+        "specialQueries": "templates/ap/special_queries.md"
+      }
+    }
+  ],
+  "aiSelectionRules": {
+    "description": "กฎสำหรับ AI ในการเลือก template ที่เหมาะสม",
+    "rules": [
+      "Match user question keywords with template keywords",
+      "Consider conversation context and previous template used",
+      "Default to channel's assigned template if no clear match",
+      "Can suggest template switch if question doesn't match current template"
+    ]
+  },
+  "changeLog": [
+    {
+      "version": "2.0.0",
+      "date": "2025-12-26",
+      "changes": [
+        "Migrated from JSON to Markdown format",
+        "Split templates into separate files: system_prompt.md, schema.md, special_queries.md",
+        "Added AI-friendly keywords for template selection",
+        "Improved customSystemPrompt integration"
+      ]
+    },
+    {
+      "version": "1.0.3",
+      "date": "2025-12-25",
+      "changes": [
+        "Legacy JSON-based template system"
+      ]
+    }
+  ]
+}
