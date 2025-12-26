@@ -18,7 +18,7 @@ Thumbs.db
 *.bak
 *.backup
 
-# Don't ignore these important files
+# Keep important files
 !version.json
-!templates/*.json
+!templates.json
 !*.md
