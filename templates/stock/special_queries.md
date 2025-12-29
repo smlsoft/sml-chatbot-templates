@@ -447,10 +447,15 @@ LIMIT 30;
 
 **เมื่อถามเกี่ยวกับ:** "สินค้าในคลัง", "ที่คลัง", "อยู่คลัง", "warehouse"
 
-### กรณีที่ 1: ระบุชื่อคลัง
+### กรณีที่ 1: ระบุชื่อคลัง หรือ ค้นหาสินค้า
 
-**ตัวอย่างคำถาม:** "สินค้าที่อยู่ที่คลัง DEDE มีอะไรบ้าง", "แสดงสินค้าในคลัง CENTER", "สินค้าอะไรอยู่คลัง BRANCH01"
+**ตัวอย่างคำถาม:** 
+- "สินค้าที่อยู่ที่คลัง DEDE มีอะไรบ้าง"
+- "แสดงสินค้าในคลัง CENTER"
+- "หาสินค้า 885 อยู่คลังไหนบ้าง"
+- "สินค้าที่มีชื่อว่า หลอดไฟ อยู่คลังไหน"
 
+**กรณีที่ 1.1: ค้นหาตามชื่อคลัง**
 ```sql
 SELECT DISTINCT
   itd.item_code,
@@ -471,10 +476,39 @@ HAVING SUM(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value,
 ORDER BY balance_qty DESC
 LIMIT 100;
 ```
+**วิธีใช้:** แทนที่ `'WAREHOUSE_NAME_HERE'` ด้วยชื่อคลัง
 
-**วิธีใช้:** แทนที่ `'WAREHOUSE_NAME_HERE'` ด้วยชื่อคลัง (ใช้ UPPER เพื่อไม่สนใจตัวพิมพ์เล็ก-ใหญ่)
+**กรณีที่ 1.2: ค้นหาตามรหัสสินค้าหรือชื่อสินค้า (ดูว่าอยู่คลังไหน)**
+```sql
+SELECT DISTINCT
+  itd.item_code,
+  i.name_1 as item_name,
+  itd.wh_code as warehouse,
+  itd.shelf_code as location,
+  i.unit_standard_name,
+  ROUND(SUM(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2)), 2) as balance_qty
+FROM ic_trans_detail itd
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+WHERE itd.last_status = 0
+  AND itd.item_type <> 5
+  AND itd.is_doc_copy = 0
+  AND i.item_type NOT IN (1, 3)
+  AND itd.doc_date_calc <= CURRENT_DATE
+  AND (
+    itd.item_code = 'ITEM_CODE_HERE'
+    OR UPPER(i.name_1) LIKE UPPER('%ITEM_NAME_HERE%')
+  )
+GROUP BY itd.item_code, i.name_1, itd.wh_code, itd.shelf_code, i.unit_standard_name
+HAVING SUM(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2)) <> 0
+ORDER BY itd.wh_code, balance_qty DESC
+LIMIT 100;
+```
+**วิธีใช้:** 
+- แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า หรือ
+- แทนที่ `'%ITEM_NAME_HERE%'` ด้วยชื่อสินค้า (ใช้ % ครอบ)
+- หรือใช้ทั้ง 2 조건 โดย AI จะเลือกตาม context
 
-**ผลลัพธ์:** แสดง 100 รายการสินค้าที่มียอดคงเหลือในคลังที่ระบุ (ทศนิยม 2 ตำแหน่ง)
+**ผลลัพธ์:** แสดงว่าสินค้านั้นอยู่คลังไหนบ้าง พร้อมยอดคงเหลือ (ทศนิยม 2 ตำแหน่ง)
 
 ### กรณีที่ 2: แสดงสินค้าทุกคลัง (สรุปตามคลัง)
 

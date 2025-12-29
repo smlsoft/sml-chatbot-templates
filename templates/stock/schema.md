@@ -131,6 +131,36 @@ WHERE i.name_1 LIKE '%keyword%'
 LIMIT 20;
 ```
 
+### 2.1 ค้นหาสินค้าทั้งรหัสและชื่อ (ยืดหยุ่น)
+
+**ใช้เมื่อ:** user พิมพ์คำค้นที่อาจเป็นรหัสหรือชื่อสินค้า
+
+```sql
+SELECT
+  i.code,
+  i.name_1,
+  c.name_1 as category_name,
+  i.unit_standard,
+  i.unit_standard_name
+FROM ic_inventory i
+LEFT JOIN ic_category c ON i.item_category = c.code
+WHERE i.code LIKE '%keyword%' 
+   OR i.name_1 LIKE '%keyword%'
+ORDER BY 
+  CASE 
+    WHEN i.code = 'keyword' THEN 1  -- exact code match first
+    WHEN i.code LIKE 'keyword%' THEN 2  -- code starts with
+    WHEN i.name_1 LIKE 'keyword%' THEN 3  -- name starts with
+    ELSE 4
+  END
+LIMIT 20;
+```
+
+**คำอธิบาย:**
+- ค้นหาทั้งรหัสสินค้า (code) และชื่อสินค้า (name_1)
+- เรียงลำดับผลลัพธ์: รหัสตรงทุกตัว > รหัสขึ้นต้นด้วย > ชื่อขึ้นต้นด้วย > อื่นๆ
+- ใช้ได้ทั้งกรณีที่ user พิมพ์รหัสหรือชื่อ
+
 ### 3. ดึงสินค้าตามหมวดหมู่
 
 ```sql
@@ -219,6 +249,7 @@ ORDER BY unit_standard;
 | มีหมวดสินค้ากี่หมวด? | `SELECT COUNT(*) as total_categories FROM ic_category WHERE status = 0` |
 | หาสินค้าชื่อ "น้ำดื่ม" | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.name_1 LIKE '%น้ำดื่ม%' LIMIT 20` |
 | ดูข้อมูลสินค้ารหัส "P001" | `SELECT i.code, i.name_1, c.name_1 as category_name, i.unit_standard_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code = 'P001'` |
+| ค้นหาสินค้า "885" (รหัสหรือชื่อ) | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code LIKE '%885%' OR i.name_1 LIKE '%885%' LIMIT 20` |
 | หมวดสินค้าไหนมีสินค้ามากที่สุด? | `SELECT c.name_1, COUNT(i.code) as cnt FROM ic_category c LEFT JOIN ic_inventory i ON c.code = i.item_category WHERE c.status = 0 GROUP BY c.code, c.name_1 ORDER BY cnt DESC LIMIT 1` |
 | แสดงสินค้าในหมวด "เครื่องดื่ม" | `SELECT i.code, i.name_1, i.unit_standard_name FROM ic_inventory i JOIN ic_category c ON i.item_category = c.code WHERE c.name_1 LIKE '%เครื่องดื่ม%' LIMIT 30` |
 
