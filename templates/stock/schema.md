@@ -247,11 +247,11 @@ ORDER BY unit_standard;
 |-------|-----------|
 | มีสินค้าทั้งหมดกี่รายการ? | `SELECT COUNT(*) as total_items FROM ic_inventory` |
 | มีหมวดสินค้ากี่หมวด? | `SELECT COUNT(*) as total_categories FROM ic_category WHERE status = 0` |
-| หาสินค้าชื่อ "น้ำดื่ม" | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.name_1 LIKE '%น้ำดื่ม%' LIMIT 20` |
-| ดูข้อมูลสินค้ารหัส "P001" | `SELECT i.code, i.name_1, c.name_1 as category_name, i.unit_standard_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code = 'P001'` |
-| ค้นหาสินค้า "885" (รหัสหรือชื่อ) | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code LIKE '%885%' OR i.name_1 LIKE '%885%' LIMIT 20` |
+| หาสินค้าตามชื่อ | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.name_1 LIKE '%<ชื่อสินค้า>%' LIMIT 20` |
+| ดูข้อมูลสินค้าตามรหัส | `SELECT i.code, i.name_1, c.name_1 as category_name, i.unit_standard_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code = '<รหัสสินค้า>'` |
+| ค้นหาสินค้า (รหัสหรือชื่อ) | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code LIKE '%<คำค้น>%' OR i.name_1 LIKE '%<คำค้น>%' LIMIT 20` |
 | หมวดสินค้าไหนมีสินค้ามากที่สุด? | `SELECT c.name_1, COUNT(i.code) as cnt FROM ic_category c LEFT JOIN ic_inventory i ON c.code = i.item_category WHERE c.status = 0 GROUP BY c.code, c.name_1 ORDER BY cnt DESC LIMIT 1` |
-| แสดงสินค้าในหมวด "เครื่องดื่ม" | `SELECT i.code, i.name_1, i.unit_standard_name FROM ic_inventory i JOIN ic_category c ON i.item_category = c.code WHERE c.name_1 LIKE '%เครื่องดื่ม%' LIMIT 30` |
+| แสดงสินค้าในหมวดหมู่ | `SELECT i.code, i.name_1, i.unit_standard_name FROM ic_inventory i JOIN ic_category c ON i.item_category = c.code WHERE c.name_1 LIKE '%<ชื่อหมวด>%' LIMIT 30` |
 
 ---
 
@@ -266,9 +266,9 @@ ORDER BY unit_standard;
   - ชื่อในฐานข้อมูลอาจมีคำเพิ่มเติมข้างหน้าหรือข้างหลัง
   - ป้องกันกรณีหาไม่เจอ (Better to find too many than find nothing)
 - **ตัวอย่าง:**
-  - ❌ **ผิด:** `WHERE c.name_1 = 'BT 1'` (จะหาไม่เจอถ้าชื่อจริงคือ "หมวดสินค้า BT 1")
-  - ✅ **ถูก:** `WHERE c.name_1 LIKE '%BT 1%'` (จะหาเจอทุกกรณี)
-  - ✅ **ถูก:** `WHERE i.name_1 LIKE '%น้ำดื่ม%'` (ค้นหาสินค้าที่มีคำว่า "น้ำดื่ม")
+  - ❌ **ผิด:** `WHERE c.name_1 = '<ชื่อหมวด>'` (จะหาไม่เจอถ้าชื่อจริงมีคำเพิ่มเติม)
+  - ✅ **ถูก:** `WHERE c.name_1 LIKE '%<ชื่อหมวด>%'` (จะหาเจอทุกกรณี)
+  - ✅ **ถูก:** `WHERE i.name_1 LIKE '%<ชื่อสินค้า>%'` (ค้นหาสินค้าที่มีคำที่ระบุ)
 
 ### การใช้ Fields
 
@@ -319,8 +319,8 @@ ORDER BY unit_standard;
 -- Original
 FROM ic_trans_detail WHERE trans_flag = 34
 
--- With Warehouse Filter "DEDE"
-FROM ic_trans_detail WHERE trans_flag = 34 AND wh_code = 'DEDE'
+-- With Warehouse Filter (XXX = รหัสคลังของร้าน)
+FROM ic_trans_detail WHERE trans_flag = 34 AND wh_code = 'XXX'
 ```
 
 ### 2. Category Filter (item_category)
@@ -331,8 +331,8 @@ FROM ic_trans_detail WHERE trans_flag = 34 AND wh_code = 'DEDE'
 
 **Example:**
 ```sql
--- With Category Filter "เครื่องดื่ม"
-WHERE c.name_1 LIKE '%เครื่องดื่ม%'
+-- With Category Filter (<ชื่อหมวด> = ชื่อหมวดหมู่ของร้าน)
+WHERE c.name_1 LIKE '%<ชื่อหมวด>%'
 ```
 
 ### 3. Date Filter (doc_date, doc_date_calc)
@@ -353,7 +353,7 @@ WHERE doc_date_calc >= CURRENT_DATE - INTERVAL '3 months'
 
 เมื่อมีหลาย filters พร้อมกัน:
 ```sql
-WHERE wh_code = 'DEDE'                                -- Warehouse filter
+WHERE wh_code = 'XXX'                                 -- Warehouse filter (XXX = รหัสคลัง)
   AND item_category IN (...)                          -- Category filter
   AND doc_date_calc >= CURRENT_DATE - INTERVAL '...'  -- Date filter
 ```

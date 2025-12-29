@@ -54,27 +54,29 @@ Channel สามารถมี `customSystemPrompt` เพื่อกำห�
 ### ตัวอย่าง Custom Rules:
 
 #### 1. กรอง Warehouse (คลังสินค้า)
-**Custom Prompt:** `"แสดงเฉพาะคลังรหัส \"DEDE\""`
+**Custom Prompt:** `"แสดงเฉพาะคลังรหัส \"XXX\""`
 
 **วิธีประมวลผล:**
-- เพิ่ม `WHERE wh_code = 'DEDE'` หรือ `AND wh_code = 'DEDE'`
+- เพิ่ม `WHERE wh_code = 'XXX'` หรือ `AND wh_code = 'XXX'`
 - ใช้กับทุก query ที่มีฟิลด์ `wh_code` หรือ `warehouse`
 - **สำคัญ:** ต้องใช้กับ Special Queries ด้วย
+- แทนที่ `XXX` ด้วยรหัสคลังจริงของร้าน
 
 **ตัวอย่าง SQL:**
 ```sql
 -- Original
 SELECT * FROM ic_trans_detail WHERE trans_flag = 34
 
--- With Warehouse Filter
-SELECT * FROM ic_trans_detail WHERE trans_flag = 34 AND wh_code = 'DEDE'
+-- With Warehouse Filter (XXX = รหัสคลังของร้าน)
+SELECT * FROM ic_trans_detail WHERE trans_flag = 34 AND wh_code = 'XXX'
 ```
 
 #### 2. กรอง Category (หมวดสินค้า)
-**Custom Prompt:** `"แสดงเฉพาะหมวด \"เครื่องดื่ม\" และ \"ขนม\""`
+**Custom Prompt:** `"แสดงเฉพาะหมวด \"หมวดA\" และ \"หมวดB\""`
 
 **วิธีประมวลผล:**
-- JOIN กับ `ic_category` และเพิ่ม `WHERE c.name_1 LIKE '%เครื่องดื่ม%' OR c.name_1 LIKE '%ขนม%'`
+- JOIN กับ `ic_category` และเพิ่ม `WHERE c.name_1 LIKE '%หมวดA%' OR c.name_1 LIKE '%หมวดB%'`
+- แทนที่ `หมวดA`, `หมวดB` ด้วยชื่อหมวดหมู่จริงของร้าน
 
 #### 3. จำกัดสิทธิ์การเข้าถึงข้อมูล
 **Custom Prompt:** `"ไม่แสดงข้อมูลต้นทุน"`
@@ -111,13 +113,14 @@ SELECT * FROM ic_trans_detail WHERE trans_flag = 34 AND wh_code = 'DEDE'
 **ตัวอย่างที่ถูกต้อง:**
 ```sql
 -- ❌ ไม่ถูกต้อง - ic_inventory ไม่มี wh_code
-SELECT COUNT(*) FROM ic_inventory WHERE wh_code = 'DEDE'
+SELECT COUNT(*) FROM ic_inventory WHERE wh_code = 'XXX'
 
 -- ✅ ถูกต้อง - นับจำนวนสินค้าทั้งหมด (ไม่เกี่ยวกับคลัง)
 SELECT COUNT(*) FROM ic_inventory
 
 -- ✅ ถูกต้อง - Book Out มี wh_code ใน ic_trans_detail
-SELECT * FROM ic_trans_detail WHERE trans_flag=34 AND wh_code = 'DEDE'
+-- (XXX = รหัสคลังของร้าน)
+SELECT * FROM ic_trans_detail WHERE trans_flag=34 AND wh_code = 'XXX'
 ```
 
 **ตำแหน่งที่ต้องแทรก Filter (เมื่อ query มี wh_code):**
@@ -130,8 +133,8 @@ SELECT * FROM ic_trans_detail WHERE trans_flag=34 AND wh_code = 'DEDE'
 -- Original Special Query (Book Out)
 FROM ic_trans_detail WHERE trans_flag=34 AND last_status = 0
 
--- With Custom Warehouse Filter "DEDE"
-FROM ic_trans_detail WHERE trans_flag=34 AND last_status = 0 AND wh_code = 'DEDE'
+-- With Custom Warehouse Filter (XXX = รหัสคลังของร้าน)
+FROM ic_trans_detail WHERE trans_flag=34 AND last_status = 0 AND wh_code = 'XXX'
 ```
 
 ---
@@ -164,8 +167,9 @@ FROM ic_trans_detail WHERE trans_flag=34 AND last_status = 0 AND wh_code = 'DEDE
 
 **💡 การค้นหาแบบยืดหยุ่น:**
 - เมื่อ user พิมพ์คำค้นที่ไม่ชัดเจนว่าเป็นรหัสหรือชื่อ ให้ใช้ `OR` ค้นหาทั้ง 2 fields
-- ตัวอย่าง: "หาสินค้า 885" → ค้นหาทั้ง `code = '885'` และ `name_1 LIKE '%885%'`
+- ตัวอย่าง: "หาสินค้า XXX" → ค้นหาทั้ง `code = 'XXX'` และ `name_1 LIKE '%XXX%'`
 - เรียงลำดับให้รหัสที่ตรงทุกตัวแสดงก่อน
+- XXX = รหัสหรือชื่อสินค้าที่ user ระบุ
 
 ### 3. สร้าง SQL
 - ใช้ template จาก `schema.md` หรือ `special_queries.md`
