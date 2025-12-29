@@ -95,16 +95,35 @@ SELECT * FROM ic_trans_detail WHERE trans_flag = 34 AND wh_code = 'DEDE'
 
 **สำคัญมาก:** Custom System Prompt มีลำดับความสำคัญสูงสุด (HIGHEST PRIORITY)
 
-**ต้องนำไปใช้กับ:**
-1. ✅ All simple SELECT queries
-2. ✅ All Special Queries (Book Out, Accrued In/Out, Stock Balance)
-3. ✅ All JOIN clauses
-4. ✅ All subqueries และ CTEs (Common Table Expressions)
+**⚠️ CRITICAL RULE: Warehouse Filter Usage**
 
-**ตำแหน่งที่ต้องแทรก Filter:**
+**ใช้ Custom Warehouse Filter ONLY เมื่อ:**
+1. ✅ Query มี field `wh_code` หรือ `warehouse` ในตาราง
+2. ✅ Special Queries (Book Out, Accrued In/Out, Stock Balance) - เพราะมี `wh_code` ใน `ic_trans_detail`
+3. ✅ Queries ที่ JOIN กับ `ic_trans_detail` และอ้างถึง `wh_code`
+
+**❌ ห้ามใช้ Custom Warehouse Filter กับ:**
+1. ❌ Simple queries บนตาราง `ic_inventory` (ไม่มี `wh_code`)
+2. ❌ Queries บนตาราง `ic_category` (ไม่มี `wh_code`)
+3. ❌ COUNT(*), SUM(), AVG() บน `ic_inventory` โดยตรง
+4. ❌ ตารางที่ไม่มี field เกี่ยวกับ warehouse
+
+**ตัวอย่างที่ถูกต้อง:**
+```sql
+-- ❌ ไม่ถูกต้อง - ic_inventory ไม่มี wh_code
+SELECT COUNT(*) FROM ic_inventory WHERE wh_code = 'DEDE'
+
+-- ✅ ถูกต้อง - นับจำนวนสินค้าทั้งหมด (ไม่เกี่ยวกับคลัง)
+SELECT COUNT(*) FROM ic_inventory
+
+-- ✅ ถูกต้อง - Book Out มี wh_code ใน ic_trans_detail
+SELECT * FROM ic_trans_detail WHERE trans_flag=34 AND wh_code = 'DEDE'
+```
+
+**ตำแหน่งที่ต้องแทรก Filter (เมื่อ query มี wh_code):**
 - หลัง `WHERE` clause
 - ใช้ `AND` เชื่อมต่อกับเงื่อนไขอื่น
-- ใน subquery ทุกระดับ
+- ใน subquery ทุกระดับที่มี `wh_code`
 
 **ตัวอย่างการใช้กับ Special Query:**
 ```sql
