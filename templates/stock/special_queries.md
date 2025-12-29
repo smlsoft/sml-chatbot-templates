@@ -39,10 +39,20 @@ WITH bookout as (
  ) as temp2
  ) as temp3 group by item_code
  )
- select * from bookout
+SELECT
+  b.item_code,
+  i.name_1 as item_name,
+  ROUND(b.book_out_qty, 2) as book_out_qty,
+  i.unit_standard_name
+FROM bookout b
+LEFT JOIN ic_inventory i ON b.item_code = i.code
+WHERE b.book_out_qty <> 0
+ORDER BY b.book_out_qty DESC;
 ```
 
 **วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า (สามารถใส่หลายรหัสได้)
+
+**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างจอง (ทศนิยม 2 ตำแหน่ง), และหน่วยนับ
 
 ### กรณีที่ 2: ไม่ระบุรหัสสินค้า
 
@@ -120,10 +130,20 @@ WITH accout as (
  ) as temp2
  ) as temp3 group by item_code
  )
- select * from accout
+SELECT
+  a.item_code,
+  i.name_1 as item_name,
+  ROUND(a.acc_out_qty, 2) as acc_out_qty,
+  i.unit_standard_name
+FROM accout a
+LEFT JOIN ic_inventory i ON a.item_code = i.code
+WHERE a.acc_out_qty <> 0
+ORDER BY a.acc_out_qty DESC;
 ```
 
 **วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า (สามารถใส่หลายรหัสได้)
+
+**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างส่ง (ทศนิยม 2 ตำแหน่ง), และหน่วยนับ
 
 ### กรณีที่ 2: ไม่ระบุรหัสสินค้า
 
@@ -177,32 +197,43 @@ LIMIT 30;
 **ตัวอย่างคำถาม:** "สินค้า AC-00008 มียอดค้างรับเท่าไร", "ดูยอดค้างรับสินค้า P001"
 
 ```sql
-select item_code, sum(acc_in_balance) as acc_in_balance
-from (
- select doc_no, item_code, acc_in_balance from (
- select doc_no, item_code, qty
- -
- coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
- where (
- trans_flag in (12,310)
- or
- ( ic_trans_detail.trans_flag = 7 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
- ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
- ), 0) as acc_in_balance
- from (
- select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
- from ic_trans_detail where trans_flag=6 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
- group by doc_no, item_code
- ) as temp1
- ) as temp2 where acc_in_balance <> 0
-) as temp3
-group by item_code
-order by acc_in_balance
+SELECT 
+  acc.item_code,
+  i.name_1 as item_name,
+  ROUND(acc.acc_in_balance, 2) as acc_in_balance,
+  i.unit_standard_name
+FROM (
+  select item_code, sum(acc_in_balance) as acc_in_balance
+  from (
+   select doc_no, item_code, acc_in_balance from (
+   select doc_no, item_code, qty
+   -
+   coalesce((
+   select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+   where (
+   trans_flag in (12,310)
+   or
+   ( ic_trans_detail.trans_flag = 7 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
+   ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
+   ), 0) as acc_in_balance
+   from (
+   select doc_no, item_code
+   , sum(qty * (stand_value/divide_value)) as qty
+   from ic_trans_detail where trans_flag=6 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
+   group by doc_no, item_code
+   ) as temp1
+   ) as temp2 where acc_in_balance <> 0
+  ) as temp3
+  group by item_code
+) acc
+LEFT JOIN ic_inventory i ON acc.item_code = i.code
+WHERE acc.acc_in_balance <> 0
+ORDER BY acc.acc_in_balance DESC;
 ```
 
 **วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า (สามารถใส่หลายรหัสได้)
+
+**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างรับ (ทศนิยม 2 ตำแหน่ง), และหน่วยนับ
 
 ### กรณีที่ 1.5: ระบุชื่อสินค้า
 
@@ -213,35 +244,47 @@ order by acc_in_balance
 **⚠️ สำคัญ:** เมื่อ user ให้**ชื่อสินค้า** (ไม่ใช่รหัส) → ต้องค้นหารหัสก่อน แล้วค่อยใช้กับ Special Query
 
 ```sql
-select item_code, sum(acc_in_balance) as acc_in_balance
-from (
- select doc_no, item_code, acc_in_balance from (
- select doc_no, item_code, qty
- -
- coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
- where (
- trans_flag in (12,310)
- or
- ( ic_trans_detail.trans_flag = 7 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
- ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
- ), 0) as acc_in_balance
- from (
- select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
- from ic_trans_detail 
- where trans_flag=6 and last_status = 0 
-   and item_code IN (
-     SELECT code FROM ic_inventory WHERE name_1 LIKE '%ITEM_NAME_HERE%'
-   )
- group by doc_no, item_code
- ) as temp1
- ) as temp2 where acc_in_balance <> 0
-) as temp3
-group by item_code
+SELECT 
+  acc.item_code,
+  i.name_1 as item_name,
+  ROUND(acc.acc_in_balance, 2) as acc_in_balance,
+  i.unit_standard_name
+FROM (
+  select item_code, sum(acc_in_balance) as acc_in_balance
+  from (
+   select doc_no, item_code, acc_in_balance from (
+   select doc_no, item_code, qty
+   -
+   coalesce((
+   select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+   where (
+   trans_flag in (12,310)
+   or
+   ( ic_trans_detail.trans_flag = 7 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
+   ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
+   ), 0) as acc_in_balance
+   from (
+   select doc_no, item_code
+   , sum(qty * (stand_value/divide_value)) as qty
+   from ic_trans_detail 
+   where trans_flag=6 and last_status = 0 
+     and item_code IN (
+       SELECT code FROM ic_inventory WHERE name_1 LIKE '%ITEM_NAME_HERE%'
+     )
+   group by doc_no, item_code
+   ) as temp1
+   ) as temp2 where acc_in_balance <> 0
+  ) as temp3
+  group by item_code
+) acc
+LEFT JOIN ic_inventory i ON acc.item_code = i.code
+WHERE acc.acc_in_balance <> 0
+ORDER BY acc.acc_in_balance DESC;
 ```
 
 **วิธีใช้:** แทนที่ `'%ITEM_NAME_HERE%'` ด้วยชื่อสินค้า (แยกคำสำคัญออกมา)
+
+**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างรับ (ทศนิยม 2 ตำแหน่ง), และหน่วยนับ
 
 **⚠️ สำคัญ - การแยกคำสำคัญ:**
 - User พิมพ์: "<ชื่อสินค้า> <คุณสมบัติ> <ขนาด>"
