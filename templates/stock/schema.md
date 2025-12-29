@@ -247,7 +247,8 @@ ORDER BY unit_standard;
 |-------|-----------|
 | มีสินค้าทั้งหมดกี่รายการ? | `SELECT COUNT(*) as total_items FROM ic_inventory` |
 | มีหมวดสินค้ากี่หมวด? | `SELECT COUNT(*) as total_categories FROM ic_category WHERE status = 0` |
-| หาสินค้าตามชื่อ | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.name_1 LIKE '%<ชื่อสินค้า>%' LIMIT 20` |
+| หาสินค้าตามชื่อ (คำเดียว) | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.name_1 LIKE '%<ชื่อสินค้า>%' LIMIT 20` |
+| หาสินค้าตามชื่อ (หลายคำ) | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.name_1 LIKE '%<คำ1>%' OR i.name_1 LIKE '%<คำ2>%' OR i.name_1 LIKE '%<คำ3>%' LIMIT 20` |
 | ดูข้อมูลสินค้าตามรหัส | `SELECT i.code, i.name_1, c.name_1 as category_name, i.unit_standard_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code = '<รหัสสินค้า>'` |
 | ค้นหาสินค้า (รหัสหรือชื่อ) | `SELECT i.code, i.name_1, c.name_1 as category_name FROM ic_inventory i LEFT JOIN ic_category c ON i.item_category = c.code WHERE i.code LIKE '%<คำค้น>%' OR i.name_1 LIKE '%<คำค้น>%' LIMIT 20` |
 | หมวดสินค้าไหนมีสินค้ามากที่สุด? | `SELECT c.name_1, COUNT(i.code) as cnt FROM ic_category c LEFT JOIN ic_inventory i ON c.code = i.item_category WHERE c.status = 0 GROUP BY c.code, c.name_1 ORDER BY cnt DESC LIMIT 1` |
@@ -261,6 +262,10 @@ ORDER BY unit_standard;
 
 - **ห้ามใช้ `=` สำหรับการค้นหาชื่อ** (name_1, category name, etc.)
 - **ต้องใช้ `LIKE '%keyword%'` เสมอ**
+- **เมื่อมีหลายคำค้นหา ใช้ OR ไม่ใช่ AND**
+  - ✅ **ถูก:** `WHERE name_1 LIKE '%คำ1%' OR name_1 LIKE '%คำ2%'` (ค้นหาได้กว้าง ตัดคำถามได้มาก)
+  - ❌ **ผิด:** `WHERE name_1 LIKE '%คำ1%' AND name_1 LIKE '%คำ2%'` (เข้มงวดเกิน หาไม่เจอง่าย)
+  - **เหตุผล:** OR ทำให้มีโอกาสหาข้อมูลเจอมากกว่า (มีคำใดคำหนึ่งก็ถือว่าเจอ)
 - **เหตุผล:**
   - User อาจพิมพ์ไม่ครบ (พิมพ์ "BT 1" แต่ในฐานข้อมูลเป็น "หมวดสินค้า BT 1")
   - ชื่อในฐานข้อมูลอาจมีคำเพิ่มเติมข้างหน้าหรือข้างหลัง
@@ -269,6 +274,8 @@ ORDER BY unit_standard;
   - ❌ **ผิด:** `WHERE c.name_1 = '<ชื่อหมวด>'` (จะหาไม่เจอถ้าชื่อจริงมีคำเพิ่มเติม)
   - ✅ **ถูก:** `WHERE c.name_1 LIKE '%<ชื่อหมวด>%'` (จะหาเจอทุกกรณี)
   - ✅ **ถูก:** `WHERE i.name_1 LIKE '%<ชื่อสินค้า>%'` (ค้นหาสินค้าที่มีคำที่ระบุ)
+  - ✅ **ถูก:** `WHERE i.name_1 LIKE '%สาย%' OR i.name_1 LIKE '%100M%'` (หาสินค้าที่มี "สาย" หรือ "100M")
+- **ห้าม hardcode ชื่อสินค้าเฉพาะ** - ต้องค้นหาได้ทุกสินค้า ทุกร้าน
 
 ### การใช้ Fields
 
