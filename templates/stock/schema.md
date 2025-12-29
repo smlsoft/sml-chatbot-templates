@@ -2,7 +2,7 @@
 
 **Database:** sml1
 **Schema:** public
-**Tables:** ic_inventory, ic_category, ic_trans_detail, ic_trans, ic_unit_use
+**Tables:** ic_inventory, ic_category, ic_trans_detail, ic_trans, ic_unit_use, ar_customer, ap_supplier
 
 ---
 
@@ -38,6 +38,38 @@ CREATE TABLE ic_category (
 );
 ```
 
+### Table: ar_customer (ลูกหนี้/ลูกค้า)
+
+```sql
+CREATE TABLE ar_customer (
+    -- Primary Key
+    code           VARCHAR(25)  PRIMARY KEY,  -- รหัสลูกหนี้
+
+    -- ข้อมูลลูกหนี้
+    name_1         VARCHAR(255),              -- ชื่อลูกหนี้
+    telephone      VARCHAR(150),              -- เบอร์โทรศัพท์
+    address        VARCHAR(255),              -- ที่อยู่
+    status         INT2 DEFAULT 0,            -- สถานะ (0=ใช้งาน, 1=ไม่ใช้งาน)
+    -- ... (more fields)
+);
+```
+
+### Table: ap_supplier (เจ้าหนี้/ผู้ขาย)
+
+```sql
+CREATE TABLE ap_supplier (
+    -- Primary Key
+    code           VARCHAR(25)  PRIMARY KEY,  -- รหัสเจ้าหนี้
+
+    -- ข้อมูลเจ้าหนี้
+    name_1         VARCHAR(100),              -- ชื่อเจ้าหนี้
+    telephone      VARCHAR(150),              -- เบอร์โทรศัพท์
+    address        VARCHAR(255),              -- ที่อยู่
+    status         INT2 DEFAULT 0,            -- สถานะ (0=ใช้งาน, 1=ไม่ใช้งาน)
+    -- ... (more fields)
+);
+```
+
 ### Table: ic_trans_detail (รายการธุรกรรมสินค้า)
 
 ```sql
@@ -50,6 +82,8 @@ CREATE TABLE ic_trans_detail (
     trans_flag       INT2,          -- ประเภทธุรกรรม
     last_status      INT2,          -- สถานะ (0=ใช้งาน)
     doc_date_calc    DATE,          -- วันที่เอกสาร
+    cust_code        VARCHAR(25),   -- รหัสลูกหนี้/เจ้าหนี้ (FK -> ar_customer.code หรือ ap_supplier.code)
+    trans_type       INT2 DEFAULT 0 NOT NULL,  -- ประเภทเอกสาร: 1=ขาย(ลูกหนี้), 2=ซื้อ(เจ้าหนี้)
     -- ... (more fields)
 );
 ```
@@ -59,6 +93,8 @@ CREATE TABLE ic_trans_detail (
 ```
 ic_inventory.item_category -> ic_category.code
 ic_trans_detail.item_code -> ic_inventory.code
+ic_trans_detail.cust_code -> ar_customer.code (เมื่อ trans_type=1)
+ic_trans_detail.cust_code -> ap_supplier.code (เมื่อ trans_type=2)
 ```
 
 ---
@@ -95,6 +131,28 @@ ic_trans_detail.item_code -> ic_inventory.code
 | **trans_flag** | INT2 | ประเภทธุรกรรม (34=จอง, 36=ส่ง, 6=รับ, etc.) |
 | **last_status** | INT2 | สถานะ: 0=ใช้งาน, 1=ยกเลิก |
 | **doc_date_calc** | DATE | วันที่เอกสาร |
+| **cust_code** | VARCHAR(25) | รหัสลูกหนี้/เจ้าหนี้ (ใช้ร่วมกับ trans_type) |
+| **trans_type** | INT2 | ประเภทเอกสาร: 1=ขาย(ลูกหนี้/AR), 2=ซื้อ(เจ้าหนี้/AP) |
+
+### Table: ar_customer
+
+| Field | Type | Description |
+|-------|------|-------------|
+| **code** | VARCHAR(25) | รหัสลูกหนี้ (Primary Key) |
+| **name_1** | VARCHAR(255) | ชื่อลูกหนี้ |
+| **telephone** | VARCHAR(150) | เบอร์โทรศัพท์ |
+| **address** | VARCHAR(255) | ที่อยู่ |
+| **status** | INT2 | สถานะ: 0=ใช้งาน, 1=ไม่ใช้งาน |
+
+### Table: ap_supplier
+
+| Field | Type | Description |
+|-------|------|-------------|
+| **code** | VARCHAR(25) | รหัสเจ้าหนี้ (Primary Key) |
+| **name_1** | VARCHAR(100) | ชื่อเจ้าหนี้ |
+| **telephone** | VARCHAR(150) | เบอร์โทรศัพท์ |
+| **address** | VARCHAR(255) | ที่อยู่ |
+| **status** | INT2 | สถานะ: 0=ใช้งาน, 1=ไม่ใช้งาน |
 
 ---
 
@@ -237,6 +295,70 @@ SELECT DISTINCT unit_standard, unit_standard_name
 FROM ic_inventory
 WHERE unit_standard IS NOT NULL AND unit_standard != ''
 ORDER BY unit_standard;
+```
+
+### 9. ค้นหาข้อมูลลูกหนี้ (AR Customer)
+
+```sql
+SELECT code, name_1, telephone, address
+FROM ar_customer
+WHERE status = 0
+  AND (code LIKE '%keyword%' OR name_1 LIKE '%keyword%')
+LIMIT 20;
+```
+
+### 10. ค้นหาข้อมูลเจ้าหนี้ (AP Supplier)
+
+```sql
+SELECT code, name_1, telephone, address
+FROM ap_supplier
+WHERE status = 0
+  AND (code LIKE '%keyword%' OR name_1 LIKE '%keyword%')
+LIMIT 20;
+```
+
+### 11. ยอดคงเหลือสินค้า กรองตามลูกหนี้/เจ้าหนี้
+
+**วิธีใช้:** วิเคราะห์บริบทคำถามเพื่อกำหนด `trans_type`:
+- คำถามเกี่ยวกับ **ลูกหนี้/ลูกค้า/ขาย** → ใช้ `trans_type = 1`
+- คำถามเกี่ยวกับ **เจ้าหนี้/ซัพพลายเออร์/ซื้อ** → ใช้ `trans_type = 2`
+
+**ตัวอย่าง Query (ยอดคงเหลือตามลูกหนี้):**
+```sql
+SELECT 
+  itd.item_code,
+  i.name_1 as item_name,
+  ar.name_1 as customer_name,
+  SUM(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2)) as balance_qty,
+  i.unit_standard_name
+FROM ic_trans_detail itd
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+LEFT JOIN ar_customer ar ON itd.cust_code = ar.code
+WHERE itd.last_status = 0
+  AND itd.trans_type = 1
+  AND (ar.code LIKE '%CUST_CODE_OR_NAME%' OR ar.name_1 LIKE '%CUST_CODE_OR_NAME%')
+GROUP BY itd.item_code, i.name_1, ar.name_1, i.unit_standard_name
+ORDER BY balance_qty DESC
+LIMIT 30;
+```
+
+**ตัวอย่าง Query (ยอดคงเหลือตามเจ้าหนี้):**
+```sql
+SELECT 
+  itd.item_code,
+  i.name_1 as item_name,
+  ap.name_1 as supplier_name,
+  SUM(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2)) as balance_qty,
+  i.unit_standard_name
+FROM ic_trans_detail itd
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+LEFT JOIN ap_supplier ap ON itd.cust_code = ap.code
+WHERE itd.last_status = 0
+  AND itd.trans_type = 2
+  AND (ap.code LIKE '%SUPP_CODE_OR_NAME%' OR ap.name_1 LIKE '%SUPP_CODE_OR_NAME%')
+GROUP BY itd.item_code, i.name_1, ap.name_1, i.unit_standard_name
+ORDER BY balance_qty DESC
+LIMIT 30;
 ```
 
 ---
