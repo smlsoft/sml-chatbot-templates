@@ -1,7 +1,7 @@
 {
   "version": "2.0.1",
   "format": "markdown",
-  "lastUpdated": "2025-12-26T10:00:00Z",
+  "lastUpdated": "2025-12-29T03:00:00Z",
   "templates": ["stock", "ap", "ar"],
-  "description": "Migrated to Markdown-based template system for better maintainability and AI-friendliness"
+  "description": "Added Special Queries: Best Selling Items & Items in Warehouse"
 }
