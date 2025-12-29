@@ -204,6 +204,47 @@ order by acc_in_balance
 
 **วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า (สามารถใส่หลายรหัสได้)
 
+### กรณีที่ 1.5: ระบุชื่อสินค้า
+
+**ตัวอย่างคำถาม:** "สายอากาศ 100เมตร มียอดค้างรับเท่าไร", "หลอดไฟ ค้างรับเท่าไหร่"
+
+**⚠️ สำคัญ:** เมื่อ user ให้**ชื่อสินค้า** (ไม่ใช่รหัส) → ต้องค้นหารหัสก่อน แล้วค่อยใช้กับ Special Query
+
+```sql
+select item_code, sum(acc_in_balance) as acc_in_balance
+from (
+ select doc_no, item_code, acc_in_balance from (
+ select doc_no, item_code, qty
+ -
+ coalesce((
+ select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ where (
+ trans_flag in (12,310)
+ or
+ ( ic_trans_detail.trans_flag = 7 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
+ ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
+ ), 0) as acc_in_balance
+ from (
+ select doc_no, item_code
+ , sum(qty * (stand_value/divide_value)) as qty
+ from ic_trans_detail 
+ where trans_flag=6 and last_status = 0 
+   and item_code IN (
+     SELECT code FROM ic_inventory WHERE name_1 LIKE '%ITEM_NAME_HERE%'
+   )
+ group by doc_no, item_code
+ ) as temp1
+ ) as temp2 where acc_in_balance <> 0
+) as temp3
+group by item_code
+```
+
+**วิธีใช้:** แทนที่ `'%ITEM_NAME_HERE%'` ด้วยชื่อสินค้า (แยกคำสำคัญออกมา เช่น "สายอากาศ", "100เมตร")
+
+**ตัวอย่าง:**
+- คำถาม: "สายอากาศ 100เมตร ค้างรับเท่าไร"
+- แทนที่: `WHERE name_1 LIKE '%สายอากาศ%' AND name_1 LIKE '%100เมตร%'`
+
 ### กรณีที่ 2: ไม่ระบุรหัสสินค้า
 
 **ตัวอย่างคำถาม:** "สินค้าไหนมียอดค้างรับบ้าง", "แสดงยอดค้างรับทั้งหมด"
