@@ -1,5 +1,5 @@
 {
-  "version": "2.0.1",
+  "version": "2.0.0",
   "format": "markdown",
   "lastUpdated": "2025-12-29T03:00:00Z",
   "templates": ["stock", "ap", "ar"],
