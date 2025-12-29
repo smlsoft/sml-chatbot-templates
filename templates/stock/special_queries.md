@@ -60,7 +60,59 @@ ORDER BY b.book_out_qty DESC;
 
 **วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า (สามารถใส่หลายรหัสได้)
 
-**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างจอง (ทศนิยม 2 ตำแหน่ง), และหน่วยนับ
+**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างจอง, และหน่วยนับ
+
+### กรณีที่ 1.5: ระบุรหัสสินค้า + แสดงข้อมูลลูกหนี้ (รายละเอียด)
+
+**ตัวอย่างคำถาม:** "สินค้า XX ค้างจอง ลูกหนี้รายไหนบ้าง", "ดูยอดค้างจองพร้อมชื่อลูกค้า"
+
+```sql
+WITH bookout as (
+ select doc_no, item_code, sum(bookout_qty_balance) as book_out_qty from (
+ select doc_no, item_code, bookout_qty_balance from (
+ select doc_no, item_code, qty
+ -
+ coalesce((
+ select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ where (
+ (trans_flag = 44 and doc_ref_type = 2)
+ or
+ (trans_flag = 36 and doc_ref_type = 2)
+ or
+ ( ic_trans_detail.trans_flag = 39 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
+ ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
+ ), 0) as bookout_qty_balance
+ from (
+ select doc_no, item_code
+ , sum(qty * (stand_value/divide_value)) as qty
+ from ic_trans_detail where trans_flag=34 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
+ group by doc_no, item_code
+ ) as temp1
+ ) as temp2
+ ) as temp3 group by doc_no, item_code
+ )
+SELECT
+  b.doc_no,
+  b.item_code,
+  i.name_1 as item_name,
+  ar.code as customer_code,
+  ar.name_1 as customer_name,
+  ROUND(b.book_out_qty, 2) as book_out_qty,
+  i.unit_standard_name
+FROM bookout b
+LEFT JOIN ic_inventory i ON b.item_code = i.code
+LEFT JOIN ic_trans_detail itd ON b.doc_no = itd.doc_no AND b.item_code = itd.item_code 
+  AND itd.trans_flag = 34 AND itd.last_status = 0
+LEFT JOIN ar_customer ar ON itd.cust_code = ar.code
+WHERE b.book_out_qty <> 0
+  AND (itd.trans_type = 1 OR itd.trans_type IS NULL)
+ORDER BY b.book_out_qty DESC
+LIMIT 30;
+```
+
+**วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า
+
+**ผลลัพธ์:** แสดงเอกสาร, สินค้า, **ลูกหนี้**, และยอดค้างจอง
 
 ### กรณีที่ 2: ไม่ระบุรหัสสินค้า
 
@@ -151,9 +203,61 @@ WHERE a.acc_out_qty <> 0
 ORDER BY a.acc_out_qty DESC;
 ```
 
-**วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า (สามารถใส่หลายรหัสได้)
+**วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า
 
-**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างส่ง (ทศนิยม 2 ตำแหน่ง), และหน่วยนับ
+**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างส่ง, และหน่วยนับ
+
+### กรณีที่ 1.5: ระบุรหัสสินค้า + แสดงข้อมูลลูกหนี้ (รายละเอียด) **← สำคัญ!**
+
+**ตัวอย่างคำถาม:** "สินค้า XX ค้างส่ง ลูกหนี้รายไหนบ้าง", "ค้างส่งให้ลูกค้ารายไหน", "มีเอกสารไหนค้างส่ง พร้อมชื่อลูกหนี้"
+
+```sql
+WITH accout as (
+ select doc_no, item_code, sum(accout_qty_balance) as acc_out_qty from (
+ select doc_no, item_code, accout_qty_balance from (
+ select doc_no, item_code, qty
+ -
+ coalesce((
+ select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ where (
+ (trans_flag = 44 and doc_ref_type = 3)
+ or
+ ( ic_trans_detail.trans_flag = 37 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
+ ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
+ ), 0) as accout_qty_balance
+ from (
+ select doc_no, item_code
+ , sum(qty * (stand_value/divide_value)) as qty
+ from ic_trans_detail where trans_flag=36 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
+ group by doc_no, item_code
+ ) as temp1
+ ) as temp2
+ ) as temp3 group by doc_no, item_code
+ )
+SELECT
+  a.doc_no,
+  a.item_code,
+  i.name_1 as item_name,
+  ar.code as customer_code,
+  ar.name_1 as customer_name,
+  ROUND(a.acc_out_qty, 2) as acc_out_qty,
+  i.unit_standard_name
+FROM accout a
+LEFT JOIN ic_inventory i ON a.item_code = i.code
+LEFT JOIN ic_trans_detail itd ON a.doc_no = itd.doc_no AND a.item_code = itd.item_code 
+  AND itd.trans_flag = 36 AND itd.last_status = 0
+LEFT JOIN ar_customer ar ON itd.cust_code = ar.code
+WHERE a.acc_out_qty <> 0
+  AND (itd.trans_type = 1 OR itd.trans_type IS NULL)
+ORDER BY a.acc_out_qty DESC
+LIMIT 30;
+```
+
+**วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า (หรือใช้ subquery ค้นหาจากชื่อ)
+
+**ผลลัพธ์:** แสดงเอกสาร, สินค้า, **ลูกหนี้**, และยอดค้างส่ง
+
+**⚠️ สำคัญ:** Query นี้แก้ปัญหา "ไม่แสดงชื่อลูกหนี้" ที่พบในการทดสอบ!
 
 ### กรณีที่ 2: ไม่ระบุรหัสสินค้า
 
@@ -296,13 +400,65 @@ ORDER BY acc.acc_in_balance DESC;
 
 **วิธีใช้:** แทนที่ `'%ITEM_NAME_HERE%'` ด้วยชื่อสินค้า (แยกคำสำคัญออกมา)
 
-**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างรับ (ทศนิยม 2 ตำแหน่ง), และหน่วยนับ
+**ผลลัพธ์:** แสดงรหัสสินค้า, ชื่อสินค้า, ยอดค้างรับ, และหน่วยนับ
 
 **⚠️ สำคัญ - การแยกคำสำคัญ:**
 - User พิมพ์: "<ชื่อสินค้า> <คุณสมบัติ> <ขนาด>"
 - แทนที่: `WHERE name_1 LIKE '%<คำ1>%' OR name_1 LIKE '%<คำ2>%' OR name_1 LIKE '%<คำ3>%'`
-- **ใช้ OR** เพื่อให้ค้นหาได้กว้างขวาง ตัดคำถามได้มากที่สุด (มีคำใดคำหนึ่งก็ถือว่าเจอ)
+- **ใช้ OR** เพื่อให้ค้นหาได้กว้างขวาง ตัดคำถามได้มากที่สุด
 - ห้าม hardcode ชื่อสินค้าเฉพาะ - ต้องค้นหาได้ทุกสินค้า
+
+### กรณีที่ 1.6: ระบุรหัสสินค้า + แสดงข้อมูลเจ้าหนี้ (รายละเอียด)
+
+**ตัวอย่างคำถาม:** "สินค้า XX ค้างรับ จากเจ้าหนี้รายไหนบ้าง", "ค้างรับจากซัพพลายเออร์รายไหน"
+
+```sql
+WITH accin as (
+  select doc_no, item_code, sum(acc_in_balance) as acc_in_balance
+  from (
+   select doc_no, item_code, acc_in_balance from (
+   select doc_no, item_code, qty
+   -
+   coalesce((
+   select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+   where (
+   trans_flag in (12,310)
+   or
+   ( ic_trans_detail.trans_flag = 7 and (select cancel_type from ic_trans where ic_trans.doc_no = ic_trans_detail.doc_no and ic_trans_detail.trans_flag = ic_trans.trans_flag) = 2)
+   ) and last_status = 0 and ic_trans_detail.ref_doc_no = temp1.doc_no and ic_trans_detail.item_code = temp1.item_code
+   ), 0) as acc_in_balance
+   from (
+   select doc_no, item_code
+   , sum(qty * (stand_value/divide_value)) as qty
+   from ic_trans_detail where trans_flag=6 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
+   group by doc_no, item_code
+   ) as temp1
+   ) as temp2 where acc_in_balance <> 0
+  ) as temp3
+  group by doc_no, item_code
+)
+SELECT
+  a.doc_no,
+  a.item_code,
+  i.name_1 as item_name,
+  ap.code as supplier_code,
+  ap.name_1 as supplier_name,
+  ROUND(a.acc_in_balance, 2) as acc_in_balance,
+  i.unit_standard_name
+FROM accin a
+LEFT JOIN ic_inventory i ON a.item_code = i.code
+LEFT JOIN ic_trans_detail itd ON a.doc_no = itd.doc_no AND a.item_code = itd.item_code 
+  AND itd.trans_flag = 6 AND itd.last_status = 0
+LEFT JOIN ap_supplier ap ON itd.cust_code = ap.code
+WHERE a.acc_in_balance <> 0
+  AND (itd.trans_type = 2 OR itd.trans_type IS NULL)
+ORDER BY a.acc_in_balance DESC
+LIMIT 30;
+```
+
+**วิธีใช้:** แทนที่ `'ITEM_CODE_HERE'` ด้วยรหัสสินค้า
+
+**ผลลัพธ์:** แสดงเอกสาร, สินค้า, **เจ้าหนี้**, และยอดค้างรับ
 
 ### กรณีที่ 2: ไม่ระบุรหัสสินค้า
 
