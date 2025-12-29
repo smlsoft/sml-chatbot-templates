@@ -409,5 +409,97 @@ from (select coalesce((select stand_value/divide_value from ic_unit_use where ic
 
 ---
 
-**Version:** 1.0  
-**Last Updated:** December 23, 2025
+## 5. สินค้าขายดี (Best Selling Items)
+
+**เมื่อถามเกี่ยวกับ:** "สินค้าขายดี", "ขายดีที่สุด", "best seller", "ขายเยอะ", "นิยม"
+
+**ตัวอย่างคำถาม:** "สินค้าไหนขายดีที่สุด", "แสดงสินค้าขายดี Top 10", "สินค้าที่ขายเยอะที่สุด"
+
+```sql
+SELECT 
+  itd.item_code,
+  i.name_1 as item_name,
+  ROUND(SUM(ABS(itd.qty * itd.stand_value / itd.divide_value)), 2) as total_qty_sold,
+  i.unit_standard_name,
+  COUNT(DISTINCT itd.doc_no) as transaction_count
+FROM ic_trans_detail itd
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+WHERE itd.last_status = 0
+  AND itd.trans_flag IN (44, 56, 68, 72)
+  AND itd.doc_date_calc >= CURRENT_DATE - INTERVAL '1 year'
+  AND i.item_type NOT IN (1, 3)
+GROUP BY itd.item_code, i.name_1, i.unit_standard_name
+HAVING SUM(ABS(itd.qty * itd.stand_value / itd.divide_value)) > 0
+ORDER BY total_qty_sold DESC
+LIMIT 30;
+```
+
+**ผลลัพธ์:** แสดง 30 รายการสินค้าที่ขายดีที่สุดในรอบ 1 ปี พร้อมปริมาณที่ขายและจำนวนครั้งที่ขาย
+
+**คำอธิบาย:**
+- `trans_flag IN (44, 56, 68, 72)` = เอกสารจ่ายออก/ขาย
+- ใช้ข้อมูลย้อนหลัง 1 ปี
+- เรียงตามปริมาณที่ขายมากที่สุด
+
+---
+
+## 6. สินค้าในคลัง (Items in Warehouse)
+
+**เมื่อถามเกี่ยวกับ:** "สินค้าในคลัง", "ที่คลัง", "อยู่คลัง", "warehouse"
+
+### กรณีที่ 1: ระบุชื่อคลัง
+
+**ตัวอย่างคำถาม:** "สินค้าที่อยู่ที่คลัง DEDE มีอะไรบ้าง", "แสดงสินค้าในคลัง CENTER", "สินค้าอะไรอยู่คลัง BRANCH01"
+
+```sql
+SELECT DISTINCT
+  itd.item_code,
+  i.name_1 as item_name,
+  itd.wh_code as warehouse,
+  i.unit_standard_name,
+  ROUND(SUM(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2)), 2) as balance_qty
+FROM ic_trans_detail itd
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+WHERE itd.last_status = 0
+  AND itd.item_type <> 5
+  AND itd.is_doc_copy = 0
+  AND i.item_type NOT IN (1, 3)
+  AND itd.doc_date_calc <= CURRENT_DATE
+  AND UPPER(itd.wh_code) = UPPER('WAREHOUSE_NAME_HERE')
+GROUP BY itd.item_code, i.name_1, itd.wh_code, i.unit_standard_name
+HAVING SUM(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2)) <> 0
+ORDER BY balance_qty DESC
+LIMIT 100;
+```
+
+**วิธีใช้:** แทนที่ `'WAREHOUSE_NAME_HERE'` ด้วยชื่อคลัง (ใช้ UPPER เพื่อไม่สนใจตัวพิมพ์เล็ก-ใหญ่)
+
+**ผลลัพธ์:** แสดง 100 รายการสินค้าที่มียอดคงเหลือในคลังที่ระบุ (ทศนิยม 2 ตำแหน่ง)
+
+### กรณีที่ 2: แสดงสินค้าทุกคลัง (สรุปตามคลัง)
+
+**ตัวอย่างคำถาม:** "สินค้าอยู่คลังไหนบ้าง", "แสดงสินค้าแยกตามคลัง"
+
+```sql
+SELECT 
+  itd.wh_code as warehouse,
+  COUNT(DISTINCT itd.item_code) as item_count,
+  ROUND(SUM(ABS(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2))), 2) as total_qty
+FROM ic_trans_detail itd
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+WHERE itd.last_status = 0
+  AND itd.item_type <> 5
+  AND itd.is_doc_copy = 0
+  AND i.item_type NOT IN (1, 3)
+  AND itd.doc_date_calc <= CURRENT_DATE
+GROUP BY itd.wh_code
+HAVING SUM(ABS(itd.calc_flag * ROUND((itd.qty * itd.stand_value) / itd.divide_value, 2))) > 0
+ORDER BY item_count DESC;
+```
+
+**ผลลัพธ์:** แสดงสรุปจำนวนสินค้าและปริมาณรวมในแต่ละคลัง
+
+---
+
+**Version:** 1.1  
+**Last Updated:** December 29, 2025
