@@ -29,7 +29,7 @@ WITH bookout as (
  select doc_no, item_code, qty
  -
  coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
  where (
  (trans_flag = 44 and doc_ref_type = 2)
  or
@@ -40,7 +40,7 @@ WITH bookout as (
  ), 0) as bookout_qty_balance
  from (
  select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
+ , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
  from ic_trans_detail where trans_flag=34 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
  group by doc_no, item_code
  ) as temp1
@@ -73,7 +73,7 @@ WITH bookout as (
  select doc_no, item_code, qty
  -
  coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
  where (
  (trans_flag = 44 and doc_ref_type = 2)
  or
@@ -84,7 +84,7 @@ WITH bookout as (
  ), 0) as bookout_qty_balance
  from (
  select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
+ , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
  from ic_trans_detail where trans_flag=34 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
  group by doc_no, item_code
  ) as temp1
@@ -125,7 +125,7 @@ WITH bookout as (
  select doc_no, item_code, qty
  -
  coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
  where (
  (trans_flag = 44 and doc_ref_type = 2)
  or
@@ -136,7 +136,7 @@ WITH bookout as (
  ), 0) as bookout_qty_balance
  from (
  select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
+ , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
  from ic_trans_detail where trans_flag=34 and last_status = 0
  group by doc_no, item_code
  ) as temp1
@@ -176,7 +176,7 @@ WITH accout as (
  select doc_no, item_code, qty
  -
  coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
  where (
  (trans_flag = 44 and doc_ref_type = 3)
  or
@@ -185,7 +185,7 @@ WITH accout as (
  ), 0) as accout_qty_balance
  from (
  select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
+ , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
  from ic_trans_detail where trans_flag=36 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
  group by doc_no, item_code
  ) as temp1
@@ -218,7 +218,7 @@ WITH accout as (
  select doc_no, item_code, qty
  -
  coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
  where (
  (trans_flag = 44 and doc_ref_type = 3)
  or
@@ -227,7 +227,7 @@ WITH accout as (
  ), 0) as accout_qty_balance
  from (
  select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
+ , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
  from ic_trans_detail where trans_flag=36 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
  group by doc_no, item_code
  ) as temp1
@@ -270,7 +270,7 @@ WITH accout as (
  select doc_no, item_code, qty
  -
  coalesce((
- select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+ select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
  where (
  (trans_flag = 44 and doc_ref_type = 3)
  or
@@ -279,7 +279,7 @@ WITH accout as (
  ), 0) as accout_qty_balance
  from (
  select doc_no, item_code
- , sum(qty * (stand_value/divide_value)) as qty
+ , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
  from ic_trans_detail where trans_flag=36 and last_status = 0
  group by doc_no, item_code
  ) as temp1
@@ -325,7 +325,7 @@ FROM (
    select doc_no, item_code, qty
    -
    coalesce((
-   select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+   select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
    where (
    trans_flag in (12,310)
    or
@@ -334,7 +334,7 @@ FROM (
    ), 0) as acc_in_balance
    from (
    select doc_no, item_code
-   , sum(qty * (stand_value/divide_value)) as qty
+   , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
    from ic_trans_detail where trans_flag=6 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
    group by doc_no, item_code
    ) as temp1
@@ -372,7 +372,7 @@ FROM (
    select doc_no, item_code, qty
    -
    coalesce((
-   select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+   select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
    where (
    trans_flag in (12,310)
    or
@@ -381,7 +381,7 @@ FROM (
    ), 0) as acc_in_balance
    from (
    select doc_no, item_code
-   , sum(qty * (stand_value/divide_value)) as qty
+   , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
    from ic_trans_detail 
    where trans_flag=6 and last_status = 0 
      and item_code IN (
@@ -420,7 +420,7 @@ WITH accin as (
    select doc_no, item_code, qty
    -
    coalesce((
-   select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+   select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
    where (
    trans_flag in (12,310)
    or
@@ -429,7 +429,7 @@ WITH accin as (
    ), 0) as acc_in_balance
    from (
    select doc_no, item_code
-   , sum(qty * (stand_value/divide_value)) as qty
+   , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
    from ic_trans_detail where trans_flag=6 and last_status = 0 and item_code IN ('ITEM_CODE_HERE')
    group by doc_no, item_code
    ) as temp1
@@ -472,7 +472,7 @@ WITH accin as (
   select doc_no, item_code, qty
   -
   coalesce((
-  select sum(qty * (stand_value/divide_value)) from ic_trans_detail
+  select sum(qty * (stand_value/NULLIF(divide_value, 0))) from ic_trans_detail
   where (
   trans_flag in (12,310)
   or
@@ -481,7 +481,7 @@ WITH accin as (
   ), 0) as acc_in_balance
   from (
   select doc_no, item_code
-  , sum(qty * (stand_value/divide_value)) as qty
+  , sum(qty * (stand_value/NULLIF(divide_value, 0))) as qty
   from ic_trans_detail where trans_flag=6 and last_status = 0
   group by doc_no, item_code
   ) as temp1
@@ -527,7 +527,7 @@ ROUND(average_cost_in*unit_standard_ratio, 2) as average_cost_in,
 ROUND(qty_out/unit_standard_ratio, 2) as qty_out,
 ROUND(amount_out, 2) as amount_out,
 ROUND(average_cost_out*unit_standard_ratio, 2) as average_cost_out
-from (select coalesce((select stand_value/divide_value from ic_unit_use where ic_unit_use.ic_code=temp2.ic_code and ic_unit_use.code=temp2.ic_unit_code),1) as unit_standard_ratio
+from (select coalesce((select stand_value/NULLIF(divide_value, 0) from ic_unit_use where ic_unit_use.ic_code=temp2.ic_code and ic_unit_use.code=temp2.ic_unit_code),1) as unit_standard_ratio
 	  ,ic_code,warehouse,location, ic_name, balance_qty, ic_unit_code, case when balance_qty=0 then 0 else balance_amount/balance_qty end as average_cost
 	  , coalesce(((select  average_cost from ic_trans_detail where ic_trans_detail.last_status=0  and ic_trans_detail.item_code=temp2.ic_code and doc_date_calc<=CURRENT_DATE
 				   and ((trans_flag in (70,54,60,58,310,12) or (trans_flag=66 and (qty>0 or sum_of_cost>0 )) or (trans_flag=14) or (trans_flag=48 and inquiry_type < 2))
@@ -597,7 +597,7 @@ ROUND(average_cost_in*unit_standard_ratio, 2) as average_cost_in,
 ROUND(qty_out/unit_standard_ratio, 2) as qty_out,
 ROUND(amount_out, 2) as amount_out,
 ROUND(average_cost_out*unit_standard_ratio, 2) as average_cost_out
-from (select coalesce((select stand_value/divide_value from ic_unit_use where ic_unit_use.ic_code=temp2.ic_code and ic_unit_use.code=temp2.ic_unit_code),1) as unit_standard_ratio
+from (select coalesce((select stand_value/NULLIF(divide_value, 0) from ic_unit_use where ic_unit_use.ic_code=temp2.ic_code and ic_unit_use.code=temp2.ic_unit_code),1) as unit_standard_ratio
 	  ,ic_code,warehouse,location, ic_name, balance_qty, ic_unit_code, case when balance_qty=0 then 0 else balance_amount/balance_qty end as average_cost
 	  , coalesce(((select  average_cost from ic_trans_detail where ic_trans_detail.last_status=0  and ic_trans_detail.item_code=temp2.ic_code and doc_date_calc<=CURRENT_DATE
 				   and ((trans_flag in (70,54,60,58,310,12) or (trans_flag=66 and (qty>0 or sum_of_cost>0 )) or (trans_flag=14) or (trans_flag=48 and inquiry_type < 2))
