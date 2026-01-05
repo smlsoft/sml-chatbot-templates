@@ -2,11 +2,55 @@
 
 **Database:** sml1
 **Schema:** public
-**Tables:** ic_inventory, ic_category, ic_trans_detail, ic_trans, ic_unit_use, ar_customer, ap_supplier
+**Tables:** ic_inventory, ic_category, ic_trans, ic_trans_detail, ic_unit_use, ar_customer, ap_supplier
 
 ---
 
 ## โครงสร้างตาราง
+
+### Table: ic_trans (หัวเอกสารธุรกรรม - Transaction Header)
+
+```sql
+CREATE TABLE ic_trans (
+    -- Primary Key
+    doc_no           VARCHAR(50)  PRIMARY KEY,  -- เลขที่เอกสาร
+    trans_flag       INT2,                      -- ธงประเภทธุรกรรม
+
+    -- ข้อมูลเอกสาร
+    trans_type       INT2,          -- ประเภทเอกสาร: 1=ขาย(ลูกหนี้), 2=ซื้อ(เจ้าหนี้)
+    doc_date         DATE,          -- วันที่เอกสาร
+    doc_time         TIME,          -- เวลาเอกสาร
+    doc_ref          VARCHAR(50),   -- เลขที่เอกสารอ้างอิง
+    doc_ref_date     DATE,          -- วันที่เอกสารอ้างอิง
+    
+    -- ข้อมูลภาษี
+    tax_doc_no       VARCHAR(50),   -- เลขที่ใบกำกับภาษี
+    tax_doc_date     DATE,          -- วันที่ใบกำกับภาษี
+    vat_type         INT2,          -- ประเภทภาษี: 0=แยกนอก, 1=รวมใน, 2=0%, 3=ไม่กระทบ
+    vat_rate         NUMERIC,       -- อัตราภาษีมูลค่าเพิ่ม
+    
+    -- ข้อมูลลูกค้า/ซัพพลายเออร์
+    cust_code        VARCHAR(25),   -- รหัสลูกหนี้/เจ้าหนี้ (FK)
+    
+    -- ข้อมูลการขาย
+    inquiry_type     INT2,          -- ประเภทการขาย: 0=เงินเชื่อ, 1=เงินสด, 2=เงินเชื่อ(บริการ), 3=เงินสด(บริการ)
+    send_day         INT,           -- จำนวนวันนัดส่ง
+    send_date        DATE,          -- วันที่ส่งสินค้า
+    
+    -- ข้อมูลการคำนวณ
+    discount_word    VARCHAR(100),  -- ข้อความส่วนลด (เช่น "50%" หรือ "50.0")
+    total_value      NUMERIC,       -- มูลค่ารวมก่อนส่วนลด
+    total_discount   NUMERIC,       -- ยอดส่วนลดรวม
+    total_before_vat NUMERIC,       -- มูลค่าก่อนภาษี
+    total_vat_value  NUMERIC,       -- มูลค่าภาษี
+    total_after_vat  NUMERIC,       -- มูลค่าหลังรวมภาษี
+    total_except_vat NUMERIC,       -- มูลค่าไม่รวมภาษี
+    total_amount     NUMERIC,       -- ยอดสุทธิ
+    
+    -- สถานะ
+    last_status      INT2,          -- สถานะเอกสาร: 0=ปกติ, 1=ยกเลิก
+);
+```
 
 ### Table: ic_inventory (สินค้า)
 
@@ -93,13 +137,50 @@ CREATE TABLE ic_trans_detail (
 ```
 ic_inventory.item_category -> ic_category.code
 ic_trans_detail.item_code -> ic_inventory.code
+ic_trans_detail.doc_no -> ic_trans.doc_no (รายละเอียดอ้างอิงหัวเอกสาร)
 ic_trans_detail.cust_code -> ar_customer.code (เมื่อ trans_type=1)
 ic_trans_detail.cust_code -> ap_supplier.code (เมื่อ trans_type=2)
+ic_trans.cust_code -> ar_customer.code (เมื่อ trans_type=1)
+ic_trans.cust_code -> ap_supplier.code (เมื่อ trans_type=2)
 ```
+
+**ความสัมพันธ์หัวเอกสาร-รายละเอียด:**
+- `ic_trans` = **Transaction Header** (หัวเอกสาร) - เก็บข้อมูลภาพรวมของเอกสาร
+- `ic_trans_detail` = **Transaction Detail** (รายละเอียดเอกสาร) - เก็บข้อมูลรายการสินค้าแต่ละตัว
+- เอกสาร 1 ใบ (1 doc_no) มีรายละเอียดได้หลายรายการ (1:N relationship)
 
 ---
 
 ## Field Descriptions
+
+### Table: ic_trans (หัวเอกสาร)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| **doc_no** | VARCHAR(50) | เลขที่เอกสาร (Primary Key) |
+| **trans_flag** | INT2 | ธงประเภทธุรกรรม (6=PO, 12=Purchase, 34=จอง, 28=Sale, etc.) |
+| **trans_type** | INT2 | ประเภทเอกสาร: 1=ขาย(ลูกหนี้/AR), 2=ซื้อ(เจ้าหนี้/AP) |
+| **doc_date** | DATE | วันที่เอกสาร |
+| **doc_time** | TIME | เวลาเอกสาร |
+| **doc_ref** | VARCHAR(50) | เลขที่เอกสารอ้างอิง |
+| **doc_ref_date** | DATE | วันที่เอกสารอ้างอิง |
+| **tax_doc_no** | VARCHAR(50) | เลขที่ใบกำกับภาษี |
+| **tax_doc_date** | DATE | วันที่ใบกำกับภาษี |
+| **vat_type** | INT2 | ประเภทภาษี: 0=แยกนอก, 1=รวมใน, 2=0%, 3=ไม่กระทบ |
+| **vat_rate** | NUMERIC | อัตราภาษีมูลค่าเพิ่ม (เช่น 7, 10) |
+| **cust_code** | VARCHAR(25) | รหัสลูกหนี้/เจ้าหนี้ (FK) |
+| **inquiry_type** | INT2 | ประเภทการขาย: 0=เงินเชื่อ, 1=เงินสด, 2=เงินเชื่อ(บริการ), 3=เงินสด(บริการ) |
+| **send_day** | INT | จำนวนวันนัดส่ง |
+| **send_date** | DATE | วันที่ส่งสินค้า |
+| **discount_word** | VARCHAR(100) | ข้อความส่วนลด (เช่น "50%" หรือ "50.0") |
+| **total_value** | NUMERIC | มูลค่ารวมก่อนส่วนลด |
+| **total_discount** | NUMERIC | ยอดส่วนลดรวม |
+| **total_before_vat** | NUMERIC | มูลค่าก่อนภาษี |
+| **total_vat_value** | NUMERIC | มูลค่าภาษี |
+| **total_after_vat** | NUMERIC | มูลค่าหลังรวมภาษี |
+| **total_except_vat** | NUMERIC | มูลค่าไม่รวมภาษี |
+| **total_amount** | NUMERIC | ยอดสุทธิ |
+| **last_status** | INT2 | สถานะเอกสาร: 0=ปกติ, 1=ยกเลิก |
 
 ### Table: ic_inventory
 
@@ -361,6 +442,83 @@ ORDER BY balance_qty DESC
 LIMIT 30;
 ```
 
+### 12. ดูข้อมูลเอกสารพร้อมรายละเอียด (Header + Detail)
+
+**ตัวอย่าง: ดูเอกสารจอง (trans_flag=34) พร้อมรายการสินค้า**
+```sql
+SELECT 
+  t.doc_no,
+  t.doc_date,
+  t.trans_type,
+  ar.name_1 as customer_name,
+  t.total_amount,
+  itd.item_code,
+  i.name_1 as item_name,
+  itd.qty,
+  i.unit_standard_name
+FROM ic_trans t
+LEFT JOIN ic_trans_detail itd ON t.doc_no = itd.doc_no
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+LEFT JOIN ar_customer ar ON t.cust_code = ar.code
+WHERE t.trans_flag = 34
+  AND t.last_status = 0
+  AND itd.last_status = 0
+ORDER BY t.doc_date DESC
+LIMIT 20;
+```
+
+### 13. สรุปยอดขายตามเอกสาร (ใช้ ic_trans)
+
+```sql
+SELECT 
+  t.doc_no,
+  t.doc_date,
+  t.tax_doc_no,
+  ar.name_1 as customer_name,
+  t.total_before_vat,
+  t.total_vat_value,
+  t.total_amount
+FROM ic_trans t
+LEFT JOIN ar_customer ar ON t.cust_code = ar.code
+WHERE t.trans_type = 1
+  AND t.last_status = 0
+  AND t.doc_date >= CURRENT_DATE - INTERVAL '30 days'
+ORDER BY t.doc_date DESC
+LIMIT 30;
+```
+
+### 14. ดูรายละเอียดเอกสารเฉพาะเลขที่
+
+```sql
+-- ดูหัวเอกสาร
+SELECT 
+  t.doc_no,
+  t.doc_date,
+  t.trans_type,
+  t.trans_flag,
+  CASE WHEN t.trans_type = 1 THEN ar.name_1 ELSE ap.name_1 END as partner_name,
+  t.total_amount,
+  t.vat_type,
+  t.last_status
+FROM ic_trans t
+LEFT JOIN ar_customer ar ON t.cust_code = ar.code AND t.trans_type = 1
+LEFT JOIN ap_supplier ap ON t.cust_code = ap.code AND t.trans_type = 2
+WHERE t.doc_no = 'DOC_NO_HERE';
+
+-- ดูรายละเอียดสินค้า
+SELECT 
+  itd.item_code,
+  i.name_1 as item_name,
+  itd.qty,
+  itd.wh_code,
+  i.unit_standard_name
+FROM ic_trans_detail itd
+LEFT JOIN ic_inventory i ON itd.item_code = i.code
+WHERE itd.doc_no = 'DOC_NO_HERE'
+  AND itd.last_status = 0
+ORDER BY itd.item_code;
+```
+
 ---
 
 ## คำถามที่พบบ่อย (FAQ Queries)
@@ -379,6 +537,35 @@ LIMIT 30;
 ---
 
 ## หมายเหตุสำคัญ
+
+### ความสัมพันธ์ ic_trans และ ic_trans_detail
+
+**โครงสร้างเอกสาร:**
+- `ic_trans` = **หัวเอกสาร (Header)** - เก็บข้อมูลภาพรวม 1 ใบ
+  - เลขที่เอกสาร (doc_no)
+  - วันที่ (doc_date)
+  - ลูกค้า/ซัพพลายเออร์ (cust_code)
+  - ยอดรวม (total_amount)
+  - ภาษี (vat_type, vat_rate, total_vat_value)
+  
+- `ic_trans_detail` = **รายละเอียดเอกสาร (Detail)** - เก็บรายการสินค้าแต่ละตัว
+  - รายการสินค้า (item_code)
+  - จำนวน (qty)
+  - คลัง (wh_code)
+  - **เชื่อมกับหัวผ่าน doc_no**
+
+**การใช้งาน:**
+- ถ้าต้องการ**ข้อมูลยอดเงิน, ภาษี, ลูกค้า** → ใช้ `ic_trans`
+- ถ้าต้องการ**รายการสินค้า, จำนวน, คลัง** → ใช้ `ic_trans_detail`
+- ถ้าต้องการ**ทั้งสองอย่าง** → JOIN ทั้งสองตาราง
+
+**ตัวอย่าง:**
+```sql
+-- ดูเอกสารพร้อมรายการสินค้า
+FROM ic_trans t
+LEFT JOIN ic_trans_detail itd ON t.doc_no = itd.doc_no
+WHERE t.doc_no = 'XXX'
+```
 
 ### หลักการค้นหาชื่อ (Name Search Rules) ⚠️ สำคัญมาก
 

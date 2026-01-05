@@ -24,9 +24,11 @@
       "relatedTables": [
         "ic_inventory",
         "ic_category",
-        "ic_trans_detail",
         "ic_trans",
-        "ic_unit_use"
+        "ic_trans_detail",
+        "ic_unit_use",
+        "ar_customer",
+        "ap_supplier"
       ],
       "enabled": true,
       "files": {
